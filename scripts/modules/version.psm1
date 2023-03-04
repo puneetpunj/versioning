@@ -50,15 +50,10 @@ function Get-GitVersionMetaData {
     $envFile = $(Join-Path $tmpPath ".env")
 
     try {
-        # Created the tmp folder
-        New-Item -ItemType Directory -Path $tmpPath -Force | Out-Null
-
-        Write-Host "Setting Docker build environment variables in file $envFile."
-        Set-Content -Path $envFile -Value ""
         
-        Write-Host "docker run --rm -v "$($repoPath):/repo" --env-file $envFile gittools/gitversion:$GitVersionImageTag /repo"
+        Write-Host "docker run --rm -v "$($repoPath):/repo" gittools/gitversion:$GitVersionImageTag /repo"
                 
-        $responseJson = $(docker run --rm -v "$($repoPath):/repo" --env-file $envFile gittools/gitversion:$GitVersionImageTag /repo)
+        $responseJson = $(docker run --rm -v "$($repoPath):/repo" gittools/gitversion:$GitVersionImageTag /repo)
         
         $returnCode = $LASTEXITCODE
         if ($returnCode -ne 0) {
