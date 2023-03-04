@@ -1,0 +1,35 @@
+mode: ContinuousDelivery
+branches:
+  main:
+    # Matches only main branch
+    regex: ^main$ | ^master$
+    increment: Minor
+  hotfix:
+    # Matches branch names starts with hotfix/
+    # Sample matches -
+    # - hotfix/fix-bug
+    # - hotfix/JIRA-1234
+    regex: ^hotfix/.*
+    increment: patch
+    tag: '{BranchName}'
+  pull-request:
+    # Matches branch names starts with pull-requests/ or pr/ or pull/ or pull-requests- or pr- or pull-
+    # Sample matches -
+    # - pull-requests/JIRA-1234
+    # - pull-requests-JIRA-1234
+    # - pull/JIRA-1234
+    # - pull-JIRA-1234
+    # - pr/JIRA-1234
+    # - pr-JIRA-1234
+    regex: ^(pull|pull\-requests|pr)[/-]
+    increment: none
+    tag: '{BranchName}'
+  feature:
+    # Matches any branch that is not main or master or pull requests or hotfix
+    # Sample matches -
+    # - feature/JIRA-1234
+    # - bugfix/JIRA-1234
+    # - JIRA-1234
+    regex: ^(?!.*master|main|(pull|pull\-requests|pr)[/-]|hotfix(es)?[/-]|^\d+(_\d)*).*
+    increment: none
+    tag: '{BranchName}'
