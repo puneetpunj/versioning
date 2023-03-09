@@ -1,3 +1,4 @@
+Import-Module -Name $(Join-Path $PSScriptRoot "buildkite.psm1")
 Import-Module -Name $(Join-Path $PSScriptRoot "git.psm1")
 
 function Get-Version {
@@ -10,6 +11,11 @@ function Get-VersionCore {
         [string]$Key
     )
 
+    if ($env:BUILDKITE) {
+        return Get-BuildkiteMetadata $Key
+    }
+
+    # script is running locally
     $metaData = Get-GitVersionMetaData
     if (!$metaData) {
         return $null
@@ -19,15 +25,16 @@ function Get-VersionCore {
 }
 
 function Get-CalculatedVersions {
-    param (        
+    param (
+        # A custom object storing git version info
         [Parameter(Mandatory = $true)]
         [object] $GitVersionMetaData
     )
     
-    $branchName = $gitVersionMetadata.BranchName
+    $branchName = $env:BUILDKITE_BRANCH ?? $gitVersionMetadata.BranchName
+    
     $version = $GitVersionMetaData.MajorMinorPatch
-    $build_number = 1
-
+    $build_number = $env:BUILDKITE_BUILD_NUMBER ?? 1
     if ( !(Get-IsMainBranch -BranchName $branchName) -and !(Get-IsHotfixBranch -BranchName $branchName)) {
         $escapedBranchName = $branchName -replace "[^a-zA-Z0-9-]", "-"
         $version = "$($version).ci-$build_number-$escapedBranchName.$($GitVersionMetaData.ShortSha)"
@@ -50,10 +57,18 @@ function Get-GitVersionMetaData {
     $envFile = $(Join-Path $tmpPath ".env")
 
     try {
+        # Created the tmp folder
+        New-Item -ItemType Directory -Path $tmpPath -Force | Out-Null
+
+        Write-Host "Setting Docker build environment variables in file $envFile."
+        Set-Content -Path $envFile -Value ""
+        Add-Content -Path $envFile -Value ("BUILDKITE")
+        Add-Content -Path $envFile -Value ("BUILDKITE_BRANCH")
+        Add-Content -Path $envFile -Value ("BUILDKITE_PULL_REQUEST")
         
-        Write-Host "docker run --rm -v "$($repoPath):/repo" gittools/gitversion:$GitVersionImageTag /repo"
+        Write-Host "docker run --rm -v "$($repoPath):/repo" --env-file $envFile gittools/gitversion:$GitVersionImageTag /repo"
                 
-        $responseJson = $(docker run --rm -v "$($repoPath):/repo" gittools/gitversion:$GitVersionImageTag /repo)
+        $responseJson = $(docker run --rm -v "$($repoPath):/repo" --env-file $envFile gittools/gitversion:$GitVersionImageTag /repo) 
         
         $returnCode = $LASTEXITCODE
         if ($returnCode -ne 0) {

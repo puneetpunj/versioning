@@ -1,5 +1,6 @@
 $ErrorActionPreference = "Stop"
 Set-PSDebug -Strict
+Import-Module -Name $(Join-Path $PSScriptRoot "modules" "buildkite.psm1")
 Import-Module -Name $(Join-Path $PSScriptRoot "modules" "version.psm1")
 
 Write-Host "`n--- Running GitVersion`n"
@@ -17,9 +18,11 @@ Write-Host "`n--- Calculated Versions"
 $calulatedVersions = Get-CalculatedVersions $gitVersionMetadata
 Write-Output $calulatedVersions | ConvertTo-Json | ConvertFrom-Json
 
-# create git tag only in CI pipeline
-if ($env:CI){
-    $message = "Build: $env:BUILD_URL"
-    git tag "v${$calulatedVersions["Version"]}" -m "${message}"
-    git push --tags
+if ($env:BUILDKITE) {
+    Write-Host "`n--- Setting Buildkite Metadata"
+    $calulatedVersions.GetEnumerator() | ForEach-Object {
+        Set-BuildkiteMetadata -Name $_.Key -Value $_.Value
+    }
+    $annotation = "Building Version: <span class='bold'>$($calulatedVersions.version)</span>"
+    buildkite-agent annotate $annotation --style "info" --context "version-info"
 }

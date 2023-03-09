@@ -1,0 +1,31 @@
+steps:
+  - wait: ~
+    depends_on: ~
+
+  - group: ":abacus: Calculate Version"
+    key: "calculate-version"    
+    steps:
+      - label: ':abacus: Calculate Version using GitVersion'
+        key: "calculate-version-gitversion"
+        depends_on: ~
+        command: 'pwsh scripts/calculate-version.ps1'
+        agents:
+          queue: 'build.linux'
+        env:
+          BUILDKITE_CLEAN_CHECKOUT: true
+          EXTERNAL_CREDENTIALS: docker
+
+  - wait: ~
+    depends_on: ~
+
+  - group: ":git: :pushpin: Create Git Tag"
+    steps:
+      - label: ':git: :pushpin: Push git Tag'
+        key: "push-git-tag"
+        depends_on: calculate-version
+        branches: "main hotfix/*"
+        command: 'pwsh scripts/push-git-tag.ps1'
+        agents:
+          queue: 'build.linux'
+        env:
+          BUILDKITE_CLEAN_CHECKOUT: true
